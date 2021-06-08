@@ -91,8 +91,9 @@ export class SourceCell<T> implements Cell<T> {
   }
 
   public deref(): T {
-    if (this.destroyed)
+    if (this.destroyed) {
       throw new OperationOnDestroyedCellError('Impossible to deref a destroyed cell')
+    }
     return this.val
   }
 
@@ -109,8 +110,9 @@ export class SourceCell<T> implements Cell<T> {
   }
 
   public subscribe(subscriber: Recalculable & Destroyable): void {
-    if (this.destroyed)
+    if (this.destroyed) {
       throw new OperationOnDestroyedCellError('Impossible to subscribe a destroyed cell')
+    }
     this.subs.add(subscriber)
   }
 
@@ -125,8 +127,9 @@ export class SourceCell<T> implements Cell<T> {
   }
 
   public swap(fn: (oldVal: T) => T): void {
-    if (this.destroyed)
+    if (this.destroyed) {
       throw new OperationOnDestroyedCellError('Impossible to swap a destroyed cell')
+    }
     const oldVal = this.val
     setTimeout(() => {
       const newVal = fn(oldVal)
@@ -179,8 +182,9 @@ export class FormulaCell<T> implements Cell<T>, Recalculable {
   }
 
   public deref(): T {
-    if (this.destroyed)
+    if (this.destroyed) {
       throw new OperationOnDestroyedCellError('Impossible to deref a destroyed cell')
+    }
     return this.val
   }
 
@@ -193,8 +197,9 @@ export class FormulaCell<T> implements Cell<T>, Recalculable {
   }
 
   public subscribe(subscriber: Recalculable & Destroyable): void {
-    if (this.destroyed)
+    if (this.destroyed) {
       throw new OperationOnDestroyedCellError('Impossible to subscribe a destroyed cell')
+    }
     this.subs.add(subscriber)
   }
 
