@@ -344,9 +344,9 @@ export function byIndex<T>(index: number, source: Cell<T[]>): FormulaCell<T | un
 }
 
 export function toBool(source: Cell<any>): FormulaCell<boolean> {
-  return formula(fromVal => !!fromVal, source)
+  return formula(fromVal => Boolean(fromVal), source)
 }
 
 export function not(source: Cell<any>): FormulaCell<boolean> {
-  return formula(fromVal => !fromVal, source)
+  return formula(fromVal => !Boolean(fromVal), source)
 }

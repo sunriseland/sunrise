@@ -9,7 +9,14 @@ import {
   isDestroyed,
   history,
   field,
-  byIndex
+  byIndex,
+  toBool,
+  not,
+  subscribe,
+  unsubscribe,
+  OperationOnDestroyedCellError,
+  Recalculable,
+  Destroyable
 } from '../src/sunrise'
 
 global.setTimeout = (fn: Function, timeout: number) => fn()
@@ -17,7 +24,7 @@ global.setTimeout = (fn: Function, timeout: number) => fn()
 const inc = (x: number) => x + 1
 const sum = (...nums: number[]) => nums.reduce((x: number, y: number) => x + y, 0)
 const identity = <T>(x: T) => x
-const not = (x: boolean) => !x
+const negate = (x: boolean) => !x
 
 function mockFn<T>(fn: (...oldVals: T[]) => T) {
   let counter = 0
@@ -88,6 +95,17 @@ describe('SourceCell', () => {
     expect(deref(x)).toBe(2)
   })
 
+  it('should trigger OperationOnDestroyedCellError when swap the destroyed cell', () => {
+    const x = cell<number>(1)
+    destroy(x)
+    try {
+      swap(inc, x)
+      fail('Error should be triggered')
+    } catch (err) {
+      expect(err).toBeInstanceOf(OperationOnDestroyedCellError)
+    }
+  })
+
   // TODO: add tests for STM
 })
 
@@ -146,7 +164,7 @@ describe('FormulaCell', () => {
     const x = cell<number>(1)
     const isEven = jest.fn((x: number) => x % 2 === 0)
     const even = formula(isEven, x)
-    const isOdd = jest.fn(not)
+    const isOdd = jest.fn(negate)
     const odd = formula(isOdd, even)
 
     expect(isEven).toBeCalledTimes(1)
@@ -156,6 +174,39 @@ describe('FormulaCell', () => {
 
     expect(isEven).toBeCalledTimes(2)
     expect(isOdd).toBeCalledTimes(1)
+  })
+
+  it('should trigger the OperationOnDestroyedCellError if dereferenced after destroying', () => {
+    const x = cell<number>(1)
+    const y = formula(inc, x)
+    destroy(y)
+    try {
+      deref(y)
+      fail('Error should be triggered')
+    } catch (err) {
+      expect(err).toBeInstanceOf(OperationOnDestroyedCellError)
+    }
+  })
+
+  it('should trigger the OperationOnDestroyedCellError if subscribed after destroying', () => {
+    const x = cell<number>(1)
+    const y = formula(inc, x)
+    destroy(y)
+    try {
+      const z = formula(inc, y)
+      fail('Error should be triggered')
+    } catch (err) {
+      expect(err).toBeInstanceOf(OperationOnDestroyedCellError)
+    }
+  })
+
+  it('all subscribers should be notified', () => {
+    const x = cell<number>(1)
+    const y = formula(inc, x)
+    const fn = jest.fn()
+    const z = formula(fn, y)
+    swap(inc, x)
+    expect(fn).toBeCalled()
   })
 })
 
@@ -181,6 +232,35 @@ describe('destruction', () => {
     expect(isDestroyed(x))
     expect(isDestroyed(y))
     expect(isDestroyed(z))
+  })
+
+  it('should do nothing with undestroyable values', () => {
+    destroy(1)
+  })
+})
+
+describe('subscribe/unsubscribe', () => {
+  it('should trigger the OperationOnDestroyedCellError when subscribe to the destroyed cell', () => {
+    const x = cell<number>(1)
+    destroy(x)
+    try {
+      const y = formula(inc, x)
+      fail('Error should be triggered')
+    } catch (err) {
+      expect(err).toBeInstanceOf(OperationOnDestroyedCellError)
+    }
+  })
+
+  it('subscribe should have no effect on the simple value', () => {
+    const x = cell<number>(1)
+    const y = formula(inc, x)
+    subscribe(y, 1)
+  })
+
+  it('unsubscribe should have no effect on the simple value', () => {
+    const x = cell<number>(1)
+    const y = formula(inc, x)
+    unsubscribe(y, 1)
   })
 })
 
@@ -208,4 +288,22 @@ it('byIndex cell', () => {
   const x = cell<number[]>([1, 2, 3])
   const i = byIndex<number>(0, x)
   expect(deref(i)).toBe(1)
+})
+
+it('toBool should create a boolean cell', () => {
+  const x = cell<number>(1)
+  const y = cell<undefined>(undefined)
+  const boolX = toBool(x)
+  const boolY = toBool(y)
+  expect(deref(boolX)).toBe(true)
+  expect(deref(boolY)).toBe(false)
+})
+
+it('not should create a boolean cell with negated value', () => {
+  const x = cell<number>(1)
+  const y = cell<undefined>(undefined)
+  const boolX = not(x)
+  const boolY = not(y)
+  expect(deref(boolX)).toBe(false)
+  expect(deref(boolY)).toBe(true)
 })
